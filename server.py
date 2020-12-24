@@ -2,18 +2,21 @@ import socket
 from _thread import *
 import threading
 import sys
-from server.helpers import (
-    adler32_chunk,
-    md5_chunk,
-    checksums_file,
-)
-from server.constants import BLOCK_SIZE
 import json
 import os
 import time
 from pathlib import Path
 import pickle
-import shutil
+
+from server.helpers import (
+    adler32_chunk,
+    md5_chunk,
+    checksums_file,
+    delete_file,
+    create_folder,
+    delete_folder,
+)
+from server.constants import BLOCK_SIZE
 
 
 print_lock = threading.Lock()
@@ -56,27 +59,6 @@ def handle_file_update(c, absolute_file_path, absolute_folder_path, file_path):
     write_blocks_to_file(blocks, absolute_file_path, tmp_file)
 
 
-def handle_file_deletion(c, absolute_file_path):
-    try:
-        os.remove(absolute_file_path)
-    except OSError as e:
-        print ("Error: %s - %s." % (e.filename, e.strerror))
-
-
-def handle_folder_creation(c, absolute_path):
-    try:
-        os.makedirs(absolute_path)
-    except FileExistsError:
-        print ("Folder exists.")
-
-
-def handle_folder_deletion(c, absolute_path):
-    try:
-        shutil.rmtree(absolute_path)
-    except OSError as e:
-        print ("Error: %s - %s." % (e.filename, e.strerror))
-
-
 def client_handler(c, folder_path):
     absolute_folder_path = Path(folder_path).absolute()
     data = c.recv(BLOCK_SIZE)
@@ -91,7 +73,7 @@ def client_handler(c, folder_path):
     if action == "folder_created":
         create_folder(c, absolute_path)
     if action == "folder_deleted":
-        deleted_folder(c, absolute_path)
+        delete_folder(c, absolute_path)
     c.close()
 
 

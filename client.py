@@ -4,8 +4,6 @@ from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 import os
 from pathlib import Path
-from client.helpers import adler32_chunk, md5_chunk, _get_block_list
-from client.constants import BLOCK_SIZE, EVENT_LIMIT
 from datetime import datetime
 import socket
 import json
@@ -13,6 +11,9 @@ import threading
 from _thread import *
 import pickle
 import re
+
+from client.helpers import adler32_chunk, md5_chunk, _get_block_list
+from client.constants import BLOCK_SIZE, EVENT_LIMIT
 
 
 def handle_folder_actions(action, event_path, src_path=None):
@@ -45,7 +46,6 @@ class FileEventHandler(PatternMatchingEventHandler):
     def on_any_event(self, event):
         striped_src_path = re.sub(r'^/private', '', event.src_path)
         event_path = striped_src_path.replace(self.monitored_folder, '')
-        print(event)
         if (event.event_type=="created" or event.event_type=="modified") and not event.is_directory: # On file update
             curr = datetime.now()
             allow = True
@@ -56,21 +56,18 @@ class FileEventHandler(PatternMatchingEventHandler):
                 try: # On file creation or update
                     open(striped_src_path, 'r').close()
                     start_new_thread(handle_folder_actions, ("file_updated", event_path, striped_src_path))
-                except OSError: # On file deletion
-                    pass
+                except OSError: # Deletes file if not exists
+                    start_new_thread(handle_folder_actions, ("file_deleted", event_path,))
         elif event.event_type=="deleted" and not event.is_directory: # On file deletion
             start_new_thread(handle_folder_actions, ("file_deleted", event_path,))
         elif event.event_type=="created" and event.is_directory: # On folder creation
-            print(striped_src_path)
             if os.path.exists(striped_src_path):
                 if len(os.listdir(striped_src_path)) == 0:
                     start_new_thread(handle_folder_actions, ("folder_created", event_path,))
-            else:
+            else: # Deletes folder if not exists
                 start_new_thread(handle_folder_actions, ("folder_deleted", event_path,))
-                print("yes")
         elif event.event_type=="deleted": # On folder deletion
             start_new_thread(handle_folder_actions, ("folder_deleted", event_path,))
-            print("never")
 
 def initiate_socket():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
