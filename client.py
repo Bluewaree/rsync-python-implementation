@@ -40,6 +40,13 @@ def handle_file_deletion(event_path):
     s.send(data)
 
 
+
+def handle_folder_creation(event_path):
+    data = json.dumps({"action": "folde_creation", "path": event_path}).encode("utf-8")
+    s = initiate_socket()
+    s.send(data)
+
+
 class FileEventHandler(PatternMatchingEventHandler):
     def __init__(self, monitored_folder, *args, **kwargs):
         super(FileEventHandler, self).__init__(*args, **kwargs)
@@ -65,7 +72,7 @@ class FileEventHandler(PatternMatchingEventHandler):
             start_new_thread(handle_file_deletion, (event_path,))
         elif event.event_type=="created" and event.is_directory: # On folder creation
             if len(os.listdir(event.src_path)) == 0:
-                pass
+                start_new_thread(handle_folder_creation, (event_path,))
         elif event.event_type=="deleted": # On folder deletion
             pass
 

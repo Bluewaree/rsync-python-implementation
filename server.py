@@ -56,17 +56,25 @@ def handle_file_deletion(c, absolute_file_path):
         print ("Error: %s - %s." % (e.filename, e.strerror))
 
 
+def handle_folder_creation(c, absolute_path):
+    try:
+        os.makedirs(absolute_path)
+    except FileExistsError:
+        print ("Folder exists.")
+
 def client_handler(c, folder_path):
     absolute_folder_path = Path(folder_path).absolute()
     data = c.recv(BLOCK_SIZE)
     data = json.loads(data.decode())
-    file_path = data["path"]
+    path = data["path"]
     action = data["action"]
-    absolute_file_path = f"{absolute_folder_path}/{file_path}"
+    absolute_path = f"{absolute_folder_path}/{path}"
     if action == "file_updated":
-        handle_file_update(c, absolute_file_path, absolute_folder_path, file_path)
+        handle_file_update(c, absolute_path, absolute_folder_path, path)
     if action == "file_deleted":
-        handle_file_deletion(c, absolute_file_path)
+        handle_file_deletion(c, absolute_path)
+    if action == "folde_creation":
+        handle_folder_creation(c, absolute_path)
     c.close()
 
 
