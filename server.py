@@ -11,6 +11,7 @@ from pathlib import Path
 import pickle
 
 
+print_lock = threading.Lock()
 def write_blocks_to_file(blocks, absolute_file_path, tmp_file):
     if os.path.exists(absolute_file_path):
         with open(absolute_file_path, "rb") as ft:
@@ -48,6 +49,13 @@ def handle_file_update(c, absolute_file_path, absolute_folder_path, file_path):
     write_blocks_to_file(blocks, absolute_file_path, tmp_file)
 
 
+def handle_file_deletion(c, absolute_file_path):
+    try:
+        os.remove(absolute_file_path)
+    except OSError as e:
+        print ("Error: %s - %s." % (e.filename, e.strerror))
+
+
 def client_handler(c, folder_path):
     absolute_folder_path = Path(folder_path).absolute()
     data = c.recv(BLOCK_SIZE)
@@ -57,6 +65,8 @@ def client_handler(c, folder_path):
     absolute_file_path = f"{absolute_folder_path}/{file_path}"
     if action == "file_updated":
         handle_file_update(c, absolute_file_path, absolute_folder_path, file_path)
+    if action == "file_deleted":
+        handle_file_deletion(c, absolute_file_path)
     c.close()
 
 
