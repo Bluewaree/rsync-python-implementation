@@ -15,36 +15,25 @@ import pickle
 import re
 
 
-def handle_file_update(event_path, src_path):
-    data = json.dumps({"action": "file_updated", "path": event_path}).encode("utf-8")
+def handle_folder_actions(action, event_path, src_path=None):
+    data = json.dumps({"action": action, "path": event_path}).encode("utf-8")
     s = initiate_socket()
     s.send(data)
-    msg = s.recv(BLOCK_SIZE)
-    checksums = msg
-    while msg:
-        try:
-            s.settimeout(2.0)
-            msg = s.recv(BLOCK_SIZE)
-        except socket.timeout:
-            break
-        s.settimeout(None)
-        checksums += msg
-    checksums = json.loads(checksums.decode("utf-8"))
-    blocks = pickle.dumps(_get_block_list(src_path, checksums))
-    s.send(blocks)
-
-
-def handle_file_deletion(event_path):
-    data = json.dumps({"action": "file_deleted", "path": event_path}).encode("utf-8")
-    s = initiate_socket()
-    s.send(data)
-
-
-
-def handle_folder_creation(event_path):
-    data = json.dumps({"action": "folde_creation", "path": event_path}).encode("utf-8")
-    s = initiate_socket()
-    s.send(data)
+    if action == "file_updated":
+        msg = s.recv(BLOCK_SIZE)
+        checksums = msg
+        while msg:
+            try:
+                s.settimeout(2.0)
+                msg = s.recv(BLOCK_SIZE)
+            except socket.timeout:
+                break
+            s.settimeout(None)
+            checksums += msg
+        checksums = json.loads(checksums.decode("utf-8"))
+        blocks = pickle.dumps(_get_block_list(src_path, checksums))
+        s.send(blocks)
+    s.close()
 
 
 class FileEventHandler(PatternMatchingEventHandler):
@@ -56,6 +45,7 @@ class FileEventHandler(PatternMatchingEventHandler):
     def on_any_event(self, event):
         striped_src_path = re.sub(r'^/private', '', event.src_path)
         event_path = striped_src_path.replace(self.monitored_folder, '')
+        print(event)
         if (event.event_type=="created" or event.event_type=="modified") and not event.is_directory: # On file update
             curr = datetime.now()
             allow = True
@@ -65,17 +55,22 @@ class FileEventHandler(PatternMatchingEventHandler):
             if allow:
                 try: # On file creation or update
                     open(striped_src_path, 'r').close()
-                    start_new_thread(handle_file_update, (event_path, striped_src_path))
+                    start_new_thread(handle_folder_actions, ("file_updated", event_path, striped_src_path))
                 except OSError: # On file deletion
-                    start_new_thread(handle_file_deletion, (event_path,))
+                    pass
         elif event.event_type=="deleted" and not event.is_directory: # On file deletion
-            start_new_thread(handle_file_deletion, (event_path,))
+            start_new_thread(handle_folder_actions, ("file_deleted", event_path,))
         elif event.event_type=="created" and event.is_directory: # On folder creation
-            if len(os.listdir(event.src_path)) == 0:
-                start_new_thread(handle_folder_creation, (event_path,))
+            print(striped_src_path)
+            if os.path.exists(striped_src_path):
+                if len(os.listdir(striped_src_path)) == 0:
+                    start_new_thread(handle_folder_actions, ("folder_created", event_path,))
+            else:
+                start_new_thread(handle_folder_actions, ("folder_deleted", event_path,))
+                print("yes")
         elif event.event_type=="deleted": # On folder deletion
-            pass
-
+            start_new_thread(handle_folder_actions, ("folder_deleted", event_path,))
+            print("never")
 
 def initiate_socket():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
