@@ -6,8 +6,8 @@
 # mkdir -p /tmp/dropbox/server
 #
 # The following enviroment variables are used to run a client & a server.
-# export CLIENT_CMD='python3 -c "import test_homework as th; th.client()" -- hey_client /tmp/dropbox/client /tmp/dropbox/server'
-# export SERVER_CMD='python3 -c "import test_homework as th; th.server()" -- hey_client /tmp/dropbox/client /tmp/dropbox/server'
+# export CLIENT_CMD='python3 -c "import test_rsync as th; th.client()" -- hey_client /tmp/dropbox/client /tmp/dropbox/server'
+# export SERVER_CMD='python3 -c "import test_rsync as th; th.server()" -- hey_client /tmp/dropbox/client /tmp/dropbox/server'
 #
 # Verbose, with stdout, filter by test name
 # pytest -vv -s . -k 'test_some_name'
@@ -33,8 +33,8 @@ ASSERT_TIMEOUT = 90.0
 ASSERT_STEP = 1.0
 SHUTDOWN_TIMEOUT = 10.0
 
-SERVER_PATH = '/tmp/test/server'
-CLIENT_PATH = '/tmp/test/client'
+SERVER_PATH = '/tmp/dropbox/server'
+CLIENT_PATH = '/tmp/dropbox/client'
 
 
 def spit(filename, data):
