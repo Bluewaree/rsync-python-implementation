@@ -33,7 +33,13 @@ def handle_folder_actions(action, event_path, src_path=None):
             checksums += msg
         checksums = json.loads(checksums.decode("utf-8"))
         blocks = pickle.dumps(_get_block_list(src_path, checksums))
-        s.send(blocks)
+        s.sendall(blocks)
+    if action == "file_created":
+        time.sleep(1)
+        with open(src_path, "rb") as f:
+            data = f.read()
+            s.sendall(data)
+            f.close()
     s.close()
 
 
@@ -46,7 +52,11 @@ class FileEventHandler(PatternMatchingEventHandler):
     def on_any_event(self, event):
         striped_src_path = re.sub(r'^/private', '', event.src_path)
         event_path = striped_src_path.replace(self.monitored_folder, '')
-        if (event.event_type=="created" or event.event_type=="modified") and not event.is_directory: # On file update
+        if event.event_type=="created" and not event.is_directory: # On file create
+            curr = datetime.now()
+            self.rate_limit[event_path] = curr
+            start_new_thread(handle_folder_actions, ("file_created", event_path, striped_src_path))
+        elif event.event_type=="modified" and not event.is_directory: # On file update
             curr = datetime.now()
             allow = True
             if event_path in self.rate_limit and (curr - self.rate_limit[event_path]).seconds<=EVENT_LIMIT:
