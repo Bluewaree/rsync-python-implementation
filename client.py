@@ -46,7 +46,7 @@ def handle_folder_actions(action, event_path, src_path=None):
 class FileEventHandler(PatternMatchingEventHandler):
     def __init__(self, monitored_folder, *args, **kwargs):
         super(FileEventHandler, self).__init__(*args, **kwargs)
-        self.monitored_folder = f"{str(monitored_folder)}/"
+        self.monitored_folder = monitored_folder
         self.rate_limit = {}
 
     def on_any_event(self, event):
@@ -79,6 +79,15 @@ class FileEventHandler(PatternMatchingEventHandler):
         elif event.event_type=="deleted": # On folder deletion
             start_new_thread(handle_folder_actions, ("folder_deleted", event_path,))
 
+
+def initial_sync(path):
+    for pth, subdirs, files in os.walk(path):
+        start_new_thread(handle_folder_actions, ("bulk_create_folders", subdirs,))
+        for name in files:
+            file_path = os.path.join(path, name)
+            start_new_thread(handle_folder_actions, ("file_created", name, file_path))
+
+
 def initiate_socket():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     HOST, PORT = "localhost", 9999
@@ -87,7 +96,8 @@ def initiate_socket():
 
 
 def initiate_filehandler(path):
-    absolute_path = Path(path).absolute()
+    absolute_path = f"{str(Path(path).absolute())}/"
+    start_new_thread(initial_sync, (absolute_path,))
     patterns = "*"
     ignore_patterns = ["*~"]
     ignore_directories = False

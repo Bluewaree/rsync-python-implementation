@@ -53,7 +53,11 @@ def client_handler(c, folder_path):
     data = json.loads(data.decode())
     path = data["path"]
     action = data["action"]
-    absolute_path = f"{absolute_folder_path}/{path}"
+    if action == "bulk_create_folders":
+        for folder_path in path:
+            create_folder(c, f"{absolute_folder_path}/{folder_path}")
+    else:
+        absolute_path = f"{absolute_folder_path}/{path}"
     if action == "file_created":
         handle_file_creation(c, absolute_path)
     if action == "file_updated":
