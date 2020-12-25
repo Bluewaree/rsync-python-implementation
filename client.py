@@ -20,21 +20,25 @@ def handle_folder_actions(action, event_path, src_path=None):
     data = json.dumps({"action": action, "path": event_path}).encode("utf-8")
     s = initiate_socket()
     s.send(data)
+    file_exists = False
     if action == "file_updated":
-        msg = s.recv(BLOCK_SIZE)
-        checksums = msg
-        while msg:
+        data = s.recv(BLOCK_SIZE)
+        file_exists = json.loads(data.decode())["file_exists"]
+    if action == "file_updated" and file_exists:
+        data = s.recv(BLOCK_SIZE)
+        checksums = data
+        while data:
             try:
                 s.settimeout(2.0)
-                msg = s.recv(BLOCK_SIZE)
+                data = s.recv(BLOCK_SIZE)
             except socket.timeout:
                 break
             s.settimeout(None)
-            checksums += msg
+            checksums += data
         checksums = json.loads(checksums.decode("utf-8"))
         blocks = pickle.dumps(_get_block_list(src_path, checksums))
         s.sendall(blocks)
-    if action == "file_created":
+    if (action == "file_created" or action=="file_updated") and not file_exists:
         time.sleep(1)
         with open(src_path, "rb") as f:
             data = f.read()

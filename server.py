@@ -56,12 +56,18 @@ def client_handler(c, folder_path):
     if action == "bulk_create_folders":
         for folder_path in path:
             create_folder(c, f"{absolute_folder_path}/{folder_path}")
-    else:
-        absolute_path = f"{absolute_folder_path}/{path}"
+        return
+    absolute_path = f"{absolute_folder_path}/{path}"
     if action == "file_created":
         handle_file_creation(c, absolute_path)
-    if action == "file_updated":
-        handle_file_update(c, absolute_path, absolute_folder_path, path)
+    if action == "file_updated": # If updated check if it exists to either create or update
+        file_exists = Path(absolute_path).exists()
+        data = json.dumps({"file_exists": file_exists}).encode("utf-8")
+        c.send(data)
+        if file_exists:
+            handle_file_update(c, absolute_path, absolute_folder_path, path)
+        else:
+            handle_file_creation(c, absolute_path)
     if action == "file_deleted":
         delete_file(c, absolute_path)
     if action == "folder_created":
