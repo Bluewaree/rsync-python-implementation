@@ -1,7 +1,15 @@
 import hashlib
 import zlib
+import socket
+import os
 
-BLOCK_SIZE = 8192
+from .constants import BLOCK_SIZE
+
+def initiate_socket():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    HOST, PORT = os.getenv("HOST" ,"localhost"), os.getenv("PORT", 9999)
+    s.connect((HOST, PORT))
+    return s
 
 def md5_chunk(chunk):
     m = hashlib.md5()
